@@ -34,6 +34,34 @@
         loaded_versions: "{{ slurped_previous_versions['content'] | b64decode | from_yaml }}"
       when: previous_version_file_stat.stat.exists
 
+    - name: Check if previous backend source archive exists
+      ansible.builtin.stat:
+        path: "{{ remote_app_dir }}/apps/backend.previous.tar.gz"
+      register: previous_backend_archive_stat
+
+    - name: Restore previous backend app source
+      block:
+        - name: Remove current backend app source directory
+          ansible.builtin.file:
+            path: "{{ remote_app_dir }}/apps/backend/"
+            state: absent
+
+        - name: Unarchive previous backend app source
+          ansible.builtin.unarchive:
+            src: "{{ remote_app_dir }}/apps/backend.previous.tar.gz"
+            dest: "{{ remote_app_dir }}/apps/"
+            remote_src: yes
+            # This creates {{ remote_app_dir }}/apps/backend/
+      when: previous_backend_archive_stat.stat.exists
+
+    - name: Restore versions.yml.previous to versions.yml.current
+      ansible.builtin.copy:
+        remote_src: yes
+        src: "{{ remote_app_dir }}/versions.yml.previous"
+        dest: "{{ remote_app_dir }}/versions.yml.current"
+        force: yes
+      when: previous_version_file_stat.stat.exists # Ensure previous version file exists
+
     # This task assumes the frontend files in the current Jenkins checkout are appropriate
     # for the versions being rolled back to. If apps/frontend/html/ was deleted or not committed,
     # this task might fail or copy unintended files. Added ignore_errors.
@@ -62,17 +90,13 @@
         image_versions: "{{ loaded_versions.image_versions }}"
       when: loaded_versions is defined and loaded_versions.image_versions is defined
 
-    - name: Pull previous images defined in docker-compose.yml (for rollback)
-      community.docker.docker_compose_v2:
-        project_src: "{{ remote_app_dir }}"
-        pull: missing
-      when: loaded_versions is defined # Only run if we successfully loaded versions
-
-    - name: Run docker compose up -d (for rollback)
+    - name: Run docker compose up -d (for rollback - with build)
       community.docker.docker_compose_v2:
         project_src: "{{ remote_app_dir }}"
         state: present
         remove_orphans: yes
+        build: yes  # Force a build, which will use the restored backend source
+        recreate: smart # Recreate services if their configuration or image changed
       register: compose_status
       when: loaded_versions is defined # Only run if we successfully loaded versions
 

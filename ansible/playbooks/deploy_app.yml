@@ -26,6 +26,14 @@
         dest: "{{ remote_app_dir }}/frontend_html/" # Destination on vm2
         mode: '0644' # Set appropriate permissions for web content
 
+    - name: (Rollback Prep) Backup current backend app source on remote server
+      ansible.builtin.archive:
+        path: "{{ remote_app_dir }}/apps/backend/"
+        dest: "{{ remote_app_dir }}/apps/backend.previous.tar.gz"
+        format: gz
+        force_archive: yes # Overwrite previous backup if it exists
+      ignore_errors: yes # It's okay if the source dir doesn't exist on first run
+
     - name: Copy backend app source code to remote server
       copy:
         src: ../../apps/backend/ # Source from the Ansible controller (Jenkins workspace)
