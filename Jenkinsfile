@@ -11,7 +11,7 @@ pipeline {
 
     parameters {
         booleanParam(name: 'PERFORM_ROLLBACK', defaultValue: false, description: 'Trigger a rollback to the previous version?')
-        booleanParam(name: 'RUN_DOCKER_SETUP', defaultValue: false, description: 'Run Docker setup on VM2? (Usually only needed once or on new VMs)')
+        booleanParam(name: 'RUN_DOCKER_SETUP', defaultValue: true, description: 'Run Docker setup on VM2? (Usually only needed once or on new VMs)')
     }
 
     stages {
@@ -36,7 +36,7 @@ pipeline {
                 // The sshAgent wrapper injects the specified credentials for SSH auth
                 sshagent([VM2_SSH_CREDENTIAL_ID]) {
                     sh """
-                        ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/setup_docker.yml
+                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/setup_docker.yml
                     """
                 }
             }
@@ -50,7 +50,7 @@ pipeline {
                 echo 'Deploying applications to VM2...'
                 sshagent([VM2_SSH_CREDENTIAL_ID]) {
                     sh """
-                        ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/deploy_app.yml 
+                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/deploy_app.yml
                     """
                     // Example of how to pass extra vars if needed:
                     // ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/deploy_app.yml --extra-vars \"frontend_image_repo=mycustomrepo/frontend backend_image_repo=mycustomrepo/backend\"
@@ -67,7 +67,7 @@ pipeline {
                 echo 'Rolling back applications on VM2 to previous version...'
                 sshagent([VM2_SSH_CREDENTIAL_ID]) {
                     sh """
-                        ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/rollback_app.yml
+                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/rollback_app.yml
                     """
                 }
                 echo 'Rollback attempt finished.'
