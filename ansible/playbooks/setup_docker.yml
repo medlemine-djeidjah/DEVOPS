@@ -2,6 +2,7 @@
 - name: Setup Docker and Docker Compose on App Servers
   hosts: app_servers
   become: true
+  gather_facts: false
   tasks:
     - name: Ensure python3-six is installed (for Ansible module compatibility)
       apt:
