@@ -26,6 +26,12 @@
         dest: "{{ remote_app_dir }}/frontend_html/" # Destination on vm2
         mode: '0644' # Set appropriate permissions for web content
 
+    - name: Copy backend app source code to remote server
+      copy:
+        src: ../../apps/backend/ # Source from the Ansible controller (Jenkins workspace)
+        dest: "{{ remote_app_dir }}/apps/backend/" # Destination on vm2
+        mode: '0755' # Ensure execute permissions for Dockerfile if needed, and general access
+
     - name: Load application versions from local versions.yml
       include_vars:
         file: "{{ local_versions_file }}"
@@ -67,12 +73,6 @@
         # image: "{{ image_versions.mysql }}"
         # db_user, db_password, db_name, db_root_password, remote_app_dir are automatically available from group_vars/all.yml
         image_versions: "{{ loaded_versions.image_versions }}"
-
-    - name: Pull latest images defined in docker-compose.yml
-      community.docker.docker_compose_v2:
-        project_src: "{{ remote_app_dir }}"
-        pull: missing
-      # Note: Requires community.docker collection (ansible-galaxy collection install community.docker)
 
     - name: Run docker compose up -d
       community.docker.docker_compose_v2:

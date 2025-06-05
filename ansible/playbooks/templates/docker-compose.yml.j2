@@ -16,6 +16,9 @@ services:
 
   backend:
     image: "{{ image_versions.python_backend }}"
+    build:
+      context: ./apps/backend # Path to Dockerfile and source, relative to this docker-compose.yml
+      dockerfile: Dockerfile
     container_name: backend_app
     ports:
       - "5000:5000" # Exposes backend on port 5000 of vm2
