@@ -2,8 +2,8 @@
 
 # Database credentials for MySQL
 db_name: "devops"
-db_user: "root"
-db_password: "root" # Please change this!
+db_user: "devops_user"
+db_password: "root" # Please change this for production!
 db_root_password: "supersecretrootpassword123" # Please change this to a strong password!
 
 # Application directory on the remote server
