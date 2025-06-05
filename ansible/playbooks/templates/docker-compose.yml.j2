@@ -4,6 +4,8 @@ services:
     container_name: frontend_app
     ports:
       - "80:80" # Exposes frontend (nginx) on port 80 of vm2
+    volumes:
+      - ./frontend_html:/usr/share/nginx/html # Mount custom html
     networks:
       - app_network
     restart: unless-stopped

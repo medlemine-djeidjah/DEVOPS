@@ -20,6 +20,12 @@
         state: directory
         mode: '0755'
 
+    - name: Copy frontend HTML content to remote server
+      copy:
+        src: ../../apps/frontend/html/ # Source from the Ansible controller (Jenkins workspace)
+        dest: "{{ remote_app_dir }}/frontend_html/" # Destination on vm2
+        mode: '0644' # Set appropriate permissions for web content
+
     - name: Load application versions from local versions.yml
       include_vars:
         file: "{{ local_versions_file }}"
