@@ -80,9 +80,6 @@
         backend_image_tag: "{{ backend_tag_to_deploy }}"
         database_image_name: "{{ database_image_repo }}"
         database_image_tag: "{{ database_tag_to_deploy }}"
-        db_user: "{{ db_user }}"
-        db_password: "{{ db_password }}"
-        db_name: "{{ db_name }}"
 
     - name: Pull latest images defined in docker-compose.yml
       community.docker.docker_compose_v2:
