@@ -4,7 +4,7 @@
 db_name: "devops"
 db_user: "root"
 db_password: "root" # Please change this!
-db_root_password: "" # Please change this!
+db_root_password: "supersecretrootpassword123" # Please change this to a strong password!
 
 # Application directory on the remote server
 remote_app_dir: "~/DEVOPS"
