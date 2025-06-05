@@ -1,7 +1,8 @@
 # Multi-App Deployment with Jenkins & Ansible
 
 This project demonstrates orchestrating a multi-app deployment (backend, frontend, database) with Jenkins and Ansible, featuring state management and intelligent rollback.
-
+## Jenkins and Ansible server ![](http://ec2-3-94-169-230.compute-1.amazonaws.com:8080)
+## MultiApp Managed Node ![]([http://ec2-3-94-169-230.compute-1.amazonaws.com:8080](http://ec2-54-226-37-64.compute-1.amazonaws.com/))
 ## Project Structure
 
 ```
