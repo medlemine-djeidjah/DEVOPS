@@ -39,6 +39,7 @@ pipeline {
                         ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ansible/inventory/hosts.ini ${ANSIBLE_PLAYBOOKS_PATH}/setup_docker.yml
                     """
                 }
+                
             }
         }
 
