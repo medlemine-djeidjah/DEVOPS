@@ -1,0 +1,417 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{textcomp}
+
+% Define custom colors
+\definecolor{primaryColor}{RGB}{41, 128, 185}
+\definecolor{secondaryColor}{RGB}{44, 62, 80}
+\definecolor{accentColor}{RGB}{46, 204, 113}
+\definecolor{bgColor}{RGB}{236, 240, 241}
+
+% Theme configuration
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamercolor{structure}{fg=primaryColor}
+\setbeamercolor{title}{fg=white,bg=primaryColor}
+\setbeamercolor{frametitle}{fg=primaryColor,bg=white}
+\setbeamercolor{background canvas}{bg=bgColor}
+\setbeamercolor{normal text}{fg=secondaryColor}
+\setbeamercolor{item}{fg=accentColor}
+
+% Custom footer
+\makeatletter
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertshortdate\hspace*{2em} 
+      Groupe 4: AHMED BOUHA, DJEIDIJAH, MOHAMMED SAAD\hspace*{2em} 
+      \insertframenumber{} / \inserttotalframenumber
+    \end{beamercolorbox}}%
+  \vskip0pt%
+}
+\makeatother
+
+% Title page information
+\title{\textbf{Projet DevOps}}
+\subtitle{Analyse et Implémentation d'une Pipeline CI/CD\\{\small Groupe 4}}
+\author{
+    Ahmed Abd Dayem AHMED BOUHA (23243) \\
+    Mohammed Lemin MED DJEIDIJAH  (23244) \\
+    Ahmed Ismail MOHAMMED SAAD (232422)
+}
+\date{\today}
+
+\begin{document}
+
+% Title frame
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Table of contents with description
+\begin{frame}
+    \frametitle{Vue d'Ensemble du Projet}
+    \begin{columns}[t]
+        \begin{column}{0.4\textwidth}
+            \tableofcontents[hideallsubsections]
+        \end{column}
+        \begin{column}{0.6\textwidth}
+            \textbf{Notre Mission:}\\
+            Mettre en place une infrastructure DevOps moderne et robuste permettant un déploiement continu et sécurisé des applications.
+            
+            \vspace{0.5cm}
+            \textbf{Objectifs Clés:}
+            \begin{itemize}
+                \item Automatisation complète
+                \item Fiabilité maximale
+                \item Maintenance simplifiée
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% Introduction with more context
+\section{Introduction}
+\begin{frame}
+    \frametitle{Contexte du Projet}
+    \begin{block}{Problématique}
+        Comment orchestrer efficacement le déploiement de multiples applications interdépendantes tout en garantissant leur cohérence et leur stabilité?
+    \end{block}
+    \pause
+    \begin{itemize}
+        \item \textbf{Situation Actuelle:}
+        \begin{itemize}
+            \item Déploiements manuels risqués
+            \item Temps d'intervention élevé
+            \item Risques d'erreurs humaines
+        \end{itemize}
+        \pause
+        \item \textbf{Notre Solution:}
+        \begin{itemize}
+            \item Pipeline CI/CD automatisé
+            \item Gestion intelligente des versions
+            \item Système de rollback automatique
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% Structure du Projet
+\begin{frame}
+    \frametitle{Structure du Projet}
+    \begin{itemize}
+        \item[-] DEVOPS/
+        \begin{itemize}
+            \item[+] apps/
+            \begin{itemize}
+                \item frontend/
+                \item backend/
+                \item database/
+            \end{itemize}
+            \item[+] ansible/
+            \begin{itemize}
+                \item playbooks/
+                \begin{itemize}
+                    \item setup\_docker.yml
+                    \item deploy\_app.yml
+                    \item rollback\_app.yml
+                \end{itemize}
+                \item inventory/
+                \begin{itemize}
+                    \item hosts.ini
+                \end{itemize}
+            \end{itemize}
+            \item[-] Jenkinsfile
+            \item[-] versions.yml
+            \item[-] README.md
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% Architecture
+\section{Architecture du Projet}
+\begin{frame}
+    \frametitle{Architecture du Projet}
+    \begin{itemize}
+        \item \textbf{Applications Déployées:}
+        \begin{itemize}
+            \item Frontend (Nginx)
+            \item Backend (Python)
+            \item Base de données (MySQL)
+        \end{itemize}
+        \item \textbf{Gestion des Versions:}
+        \begin{itemize}
+            \item Fichier versions.yml centralisé
+            \item Versions indépendantes par service
+        \end{itemize}
+        \item \textbf{Infrastructure:}
+        \begin{itemize}
+            \item Jenkins pour l'orchestration
+            \item Ansible pour le déploiement
+            \item Conteneurisation Docker
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% Architecture Globale
+\begin{frame}
+    \frametitle{Architecture Globale}
+    \begin{center}
+    \begin{tikzpicture}[node distance=1.5cm]
+        \node[draw, rectangle] (jenkins) {Jenkins Server};
+        \node[draw, rectangle, below of=jenkins] (pipeline) {Pipeline CI/CD};
+        \node[draw, rectangle, below of=pipeline] (versions) {versions.yml};
+        \node[draw, rectangle, below of=versions] (ansible) {Ansible Playbooks};
+        \node[draw, rectangle, below of=ansible, minimum width=4cm] (apps) {Frontend | Backend | DB};
+        
+        \draw[->] (jenkins) -- (pipeline);
+        \draw[->] (pipeline) -- (versions);
+        \draw[->] (versions) -- (ansible);
+        \draw[->] (ansible) -- (apps);
+    \end{tikzpicture}
+    \end{center}
+\end{frame}
+
+% Flux de Déploiement
+\begin{frame}
+    \frametitle{Flux de Déploiement}
+    \begin{enumerate}
+        \item Déclenchement du Pipeline
+        \item[\textrightarrow] Vérification versions.yml
+        \item[\textrightarrow] Déploiement DB
+        \item[\textrightarrow] Test DB $\rightarrow$ Si échec $\rightarrow$ Rollback
+        \item[\textrightarrow] Déploiement Backend
+        \item[\textrightarrow] Test Backend $\rightarrow$ Si échec $\rightarrow$ Rollback
+        \item[\textrightarrow] Déploiement Frontend
+        \item[\textrightarrow] Test Frontend $\rightarrow$ Si échec $\rightarrow$ Rollback
+    \end{enumerate}
+\end{frame}
+
+% Détails Techniques
+\begin{frame}
+    \frametitle{Détails Techniques}
+    \begin{columns}[t]
+        \begin{column}{0.5\textwidth}
+            \textbf{Infrastructure}
+            \begin{itemize}
+                \item Jenkins master
+                \item Agents de déploiement
+                \item Conteneurs Docker
+                \item Réseau isolé
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \textbf{Sécurité}
+            \begin{itemize}
+                \item SSH avec clés
+                \item HTTPS/TLS
+                \item Secrets Jenkins
+                \item Isolation réseau
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% Monitoring et Logs
+\begin{frame}
+    \frametitle{Monitoring et Logs}
+    \begin{itemize}
+        \item \textbf{Surveillance:}
+        \begin{itemize}
+            \item État des conteneurs
+            \item Métriques système
+            \item Temps de réponse
+            \item Utilisation ressources
+        \end{itemize}
+        \item \textbf{Logs Centralisés:}
+        \begin{itemize}
+            \item Logs applicatifs
+            \item Logs système
+            \item Historique déploiements
+            \item Traces de rollback
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% Points Forts du Projet
+\begin{frame}
+    \frametitle{Points Forts du Projet}
+    \begin{itemize}
+        \item \textbf{Automatisation Complète:}
+        \begin{itemize}
+            \item Déploiement sans intervention
+            \item Tests automatisés
+            \item Rollback intelligent
+        \end{itemize}
+        \item \textbf{Haute Disponibilité:}
+        \begin{itemize}
+            \item Zero-downtime deployment
+            \item Basculement automatique
+            \item Sauvegarde des données
+        \end{itemize}
+        \item \textbf{Maintenance Simplifiée:}
+        \begin{itemize}
+            \item Versions centralisées
+            \item Documentation intégrée
+            \item Processus standardisé
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% Jenkins Pipeline
+\section{Pipeline Jenkins}
+\begin{frame}
+    \frametitle{Pipeline Jenkins}
+    \begin{itemize}
+        \item Intégration Continue (CI)
+        \item Déploiement Continu (CD)
+        \item Étapes automatisées
+        \item Tests et qualité du code
+    \end{itemize}
+\end{frame}
+
+% Jenkins Pipeline Details
+\section{Pipeline Jenkins en Détail}
+\begin{frame}
+    \frametitle{Pipeline Jenkins en Détail}
+    \begin{itemize}
+        \item \textbf{Étapes du Pipeline:}
+        \begin{itemize}
+            \item Checkout du code
+            \item Configuration Docker (conditionnelle)
+            \item Déploiement des applications
+            \item Gestion du rollback
+        \end{itemize}
+        \item \textbf{Paramètres Configurables:}
+        \begin{itemize}
+            \item Option de rollback
+            \item Configuration Docker
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Gestion des Versions et Rollback}
+    \begin{itemize}
+        \item \textbf{Fichier versions.yml:}
+        \begin{itemize}
+            \item nginx: latest
+            \item mysql: latest
+            \item backend: version 3.0
+        \end{itemize}
+        \item \textbf{Stratégie de Rollback:}
+        \begin{itemize}
+            \item Détection automatique des échecs
+            \item Restauration cohérente des services
+            \item Maintien de la compatibilité entre versions
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% Ansible Implementation
+\section{Implémentation Ansible}
+\begin{frame}
+    \frametitle{Ansible: Automatisation et Déploiement}
+    \begin{itemize}
+        \item \textbf{Playbooks Principaux:}
+        \begin{itemize}
+            \item setup\_docker.yml: Installation et configuration
+            \item deploy\_app.yml: Déploiement des services
+            \item rollback\_app.yml: Gestion des rollbacks
+        \end{itemize}
+        \item \textbf{Caractéristiques:}
+        \begin{itemize}
+            \item Déploiement sans interruption
+            \item Vérification de la santé des services
+            \item Gestion des dépendances entre services
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% New Technical Details frame
+\begin{frame}
+    \frametitle{Spécifications Techniques}
+    \begin{columns}[t]
+        \begin{column}{0.5\textwidth}
+            \begin{block}{Technologies Utilisées}
+                \begin{itemize}
+                    \item Jenkins (Pipeline)
+                    \item Ansible (Configuration)
+                    \item Docker (Conteneurisation)
+                    \item Git (Versioning)
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{block}{Environnements}
+                \begin{itemize}
+                    \item Développement
+                    \item Test (QA)
+                    \item Production
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+    \vspace{0.3cm}
+    \begin{alertblock}{Points d'Attention}
+        \begin{itemize}
+            \item Sécurité renforcée
+            \item Haute disponibilité
+            \item Performance optimale
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+% Implementation Details
+\begin{frame}
+    \frametitle{Détails d'Implémentation}
+    \begin{block}{Processus de Déploiement}
+        \begin{enumerate}
+            \item \textbf{Préparation:} Vérification des versions et dépendances
+            \item \textbf{Base de Données:} Migration et sauvegarde
+            \item \textbf{Backend:} Déploiement et tests
+            \item \textbf{Frontend:} Mise à jour et validation
+        \end{enumerate}
+    \end{block}
+    \pause
+    \begin{block}{Mécanismes de Sécurité}
+        \begin{itemize}
+            \item Authentification SSH
+            \item Chiffrement des données
+            \item Isolation des environnements
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+% Conclusion
+\section{Conclusion}
+\begin{frame}
+    \frametitle{Conclusion}
+    \begin{itemize}
+        \item Résumé des réalisations
+        \item Bénéfices du projet
+        \item Perspectives futures
+    \end{itemize}
+\end{frame}
+
+% Thank you slide
+\begin{frame}
+    \frametitle{Merci de votre attention}
+    \begin{center}
+        \Large{Questions?}
+        \vspace{1cm}
+        
+        \textit{Projet réalisé par:}\\
+        \medskip
+        Ahmed Abd Dayem AHMEDBOUHA\\
+        Mohammed Lemin MED djeidjah\\
+        Ahmed Ismail Mohammed Saad
+    \end{center}
+\end{frame}
+
+\end{document} 
