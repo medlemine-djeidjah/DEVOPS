@@ -1,10 +1,4 @@
-current_versions:
-  frontend_tag: "latest"
-  backend_tag: "latest"
-  database_tag: "latest" # Or a specific version like "postgres:13"
-
-# This section can be managed by your deployment script to enable rollbacks
-# previous_versions:
-#   frontend_tag: "old_tag_for_frontend"
-#   backend_tag: "old_tag_for_backend"
-#   database_tag: "old_tag_for_database" 
+image_versions:
+  nginx: "nginx:latest"
+  mysql: "mysql:latest"
+  python_backend: "python:3.9-slim" 
