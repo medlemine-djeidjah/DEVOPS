@@ -1,111 +1,82 @@
 ---
-- name: Rollback Multi-App Stack to Previous Version
+- name: Rollback Multi-App Stack to Previous Versions
   hosts: app_servers
   become: true
 
   vars:
-    # --- Deployment Configuration (Must match deploy_app.yml) ---
-    app_deploy_dir: "/opt/my_multi_app"
-
-    frontend_image_repo: "yourdockerhubuser/dummy-frontend"
-    backend_image_repo: "yourdockerhubuser/dummy-backend"
-    database_image_repo: "postgres"
-
-    default_frontend_tag: "latest"
-    default_backend_tag: "latest"
-    default_database_tag: "13-alpine"
-
-    db_user: "app_user"
-    db_password: "app_strong_password"
-    db_name: "app_db"
-    # --- End of Customization ---
-
-    remote_current_versions_file: "{{ app_deploy_dir }}/versions.yml.current"
-    remote_previous_versions_file: "{{ app_deploy_dir }}/versions.yml.previous"
-    temp_rollback_versions_file: "{{ app_deploy_dir }}/versions.yml.temp_rollback"
+    # remote_app_dir, db_user, db_password, db_name, db_root_password
+    # are expected to be available from group_vars/all.yml
 
   tasks:
-    - name: Check if previous version file exists
-      stat:
-        path: "{{ remote_previous_versions_file }}"
-      register: previous_version_stat
+    - name: Ensure deployment directory exists on remote server
+      ansible.builtin.file:
+        path: "{{ remote_app_dir }}"
+        state: directory
+        mode: '0755'
 
-    - name: Fail if no previous version file is found
-      fail:
-        msg: "No previous version file ({{ remote_previous_versions_file }}) found. Cannot rollback."
-      when: not previous_version_stat.stat.exists
+    - name: Check if previous versions file exists
+      ansible.builtin.stat:
+        path: "{{ remote_app_dir }}/versions.yml.previous"
+      register: previous_version_file_stat
 
-    - name: Load application versions from remote previous_versions.yml
-      include_vars:
-        file: "{{ remote_previous_versions_file }}"
-        name: version_data # Loads into version_data.current_versions.frontend_tag etc.
-      # This assumes the previous_versions.yml has the same structure as versions.yml
-      # If you modified deploy_app.yml to store previous_versions section, adjust this.
+    - name: Fail if previous versions file does not exist
+      ansible.builtin.fail:
+        msg: "Rollback cannot proceed: {{ remote_app_dir }}/versions.yml.previous not found. Was there a previous deployment attempt?"
+      when: not previous_version_file_stat.stat.exists
 
-    - name: Set image tags for rollback from previous_versions.yml or defaults
-      set_fact:
-        frontend_tag_to_deploy: "{{ version_data.current_versions.frontend_tag | default(default_frontend_tag) }}"
-        backend_tag_to_deploy: "{{ version_data.current_versions.backend_tag | default(default_backend_tag) }}"
-        database_tag_to_deploy: "{{ version_data.current_versions.database_tag | default(default_database_tag) }}"
+    - name: Load previous application versions from remote versions.yml.previous
+      ansible.builtin.slurp:
+        src: "{{ remote_app_dir }}/versions.yml.previous"
+      register: slurped_previous_versions
+
+    - name: Set previous versions as facts
+      ansible.builtin.set_fact:
+        loaded_versions: "{{ slurped_previous_versions['content'] | b64decode | from_yaml }}"
+      when: previous_version_file_stat.stat.exists
+
+    # This task assumes the frontend files in the current Jenkins checkout are appropriate
+    # for the versions being rolled back to. If apps/frontend/html/ was deleted or not committed,
+    # this task might fail or copy unintended files. Added ignore_errors.
+    - name: Copy frontend HTML content to remote server (for rollback)
+      ansible.builtin.copy:
+        src: ../../apps/frontend/html/ # Source from the Ansible controller (Jenkins workspace)
+        dest: "{{ remote_app_dir }}/frontend_html/" # Destination on vm2
+        mode: '0644'
+      ignore_errors: true # In case frontend files don't exist in checkout for the rolled-back state
 
     - name: Display versions to be deployed for rollback
-      debug:
+      ansible.builtin.debug:
         msg:
           - "ROLLING BACK TO:"
-          - "Frontend: {{ frontend_image_repo }}:{{ frontend_tag_to_deploy }}"
-          - "Backend: {{ backend_image_repo }}:{{ backend_tag_to_deploy }}"
-          - "Database: {{ database_image_repo }}:{{ database_tag_to_deploy }}"
+          - "Frontend (Nginx): {{ loaded_versions.image_versions.nginx }}"
+          - "Backend (Python): {{ loaded_versions.image_versions.python_backend }}"
+          - "Database (MySQL): {{ loaded_versions.image_versions.mysql }}"
+      when: loaded_versions is defined and loaded_versions.image_versions is defined
 
-    - name: Generate docker-compose.yml on remote server for rollback
-      template:
-        src: templates/docker-compose.yml.j2 # Re-use the same template
-        dest: "{{ app_deploy_dir }}/docker-compose.yml"
+    - name: Generate docker-compose.yml on remote server from template (for rollback)
+      ansible.builtin.template:
+        src: templates/docker-compose.yml.j2
+        dest: "{{ remote_app_dir }}/docker-compose.yml"
         mode: '0644'
       vars:
-        frontend_image_name: "{{ frontend_image_repo }}"
-        frontend_image_tag: "{{ frontend_tag_to_deploy }}"
-        backend_image_name: "{{ backend_image_repo }}"
-        backend_image_tag: "{{ backend_tag_to_deploy }}"
-        database_image_name: "{{ database_image_repo }}"
-        database_image_tag: "{{ database_tag_to_deploy }}"
-        # db_user, db_password, and db_name are already defined at the play level
-        # and are automatically available to the template.
-        # Removing them from here to prevent recursion.
+        image_versions: "{{ loaded_versions.image_versions }}"
+      when: loaded_versions is defined and loaded_versions.image_versions is defined
 
-    - name: Pull images for rollback
+    - name: Pull previous images defined in docker-compose.yml (for rollback)
       community.docker.docker_compose_v2:
-        project_src: "{{ app_deploy_dir }}"
+        project_src: "{{ remote_app_dir }}"
         pull: missing
+      when: loaded_versions is defined # Only run if we successfully loaded versions
 
-    - name: Run docker compose up -d for rollback (redeploying with old versions)
+    - name: Run docker compose up -d (for rollback)
       community.docker.docker_compose_v2:
-        project_src: "{{ app_deploy_dir }}"
+        project_src: "{{ remote_app_dir }}"
         state: present
         remove_orphans: yes
-      register: compose_status_rollback
+      register: compose_status
+      when: loaded_versions is defined # Only run if we successfully loaded versions
 
-    - name: Display Docker Compose status for rollback
-      debug:
-        var: compose_status_rollback
-
-    - name: (Rollback Finalize) Move current to a temporary name
-      command: "mv {{ remote_current_versions_file }} {{ temp_rollback_versions_file }}"
-      args:
-        chdir: "{{ app_deploy_dir }}"
-      changed_when: true
-
-    - name: (Rollback Finalize) Move previous to current
-      command: "mv {{ remote_previous_versions_file }} {{ remote_current_versions_file }}"
-      args:
-        chdir: "{{ app_deploy_dir }}"
-      changed_when: true
-
-    - name: (Rollback Finalize) Move temporary to previous (completing the swap)
-      command: "mv {{ temp_rollback_versions_file }} {{ remote_previous_versions_file }}"
-      args:
-        chdir: "{{ app_deploy_dir }}"
-      changed_when: true
-
-    - name: Rollback complete message
-      debug:
-        msg: "Rollback to versions defined in previously '{{ remote_previous_versions_file }}' (now '{{ remote_current_versions_file }}') is complete." 
+    - name: Display Docker Compose status (for rollback)
+      ansible.builtin.debug:
+        var: compose_status
+      when: loaded_versions is defined 
