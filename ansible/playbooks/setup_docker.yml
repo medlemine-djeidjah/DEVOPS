@@ -1,0 +1,97 @@
+---
+- name: Setup Docker and Docker Compose on App Servers
+  hosts: app_servers
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+      changed_when: false # Avoids showing as changed if only cache was updated
+
+    - name: Install prerequisite packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Install Docker CE
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: yes
+
+    - name: Install Docker CE CLI
+      apt:
+        name: docker-ce-cli
+        state: present
+
+    - name: Install containerd.io
+      apt:
+        name: containerd.io
+        state: present
+
+    - name: Ensure Docker service is active and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add remote user (ubuntu) to docker group
+      user:
+        name: "{{ ansible_user }}" # ansible_user is 'ubuntu' from ansible.cfg
+        groups: docker
+        append: yes
+      # This allows the ubuntu user to run docker commands without sudo
+      # A logout/login or reboot might be needed for this to take full effect for SSH sessions,
+      # but Ansible's subsequent Docker commands in the same play should work.
+
+    - name: Install Docker Compose V2 (plugin)
+      apt:
+        name: docker-compose-plugin # For Docker Compose V2, installs as a CLI plugin
+        state: present
+      notify: Test Docker Compose
+
+    # Alternatively, for Docker Compose V1 (standalone binary - older method)
+    # - name: Download Docker Compose V1
+    #   get_url:
+    #     url: "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"
+    #     dest: /usr/local/bin/docker-compose
+    #     mode: '0755'
+    #   when: false # Disabled by default, prefer V2
+
+    # - name: Check Docker Compose V1 installation (if V1 was installed)
+    #   command: docker-compose --version
+    #   register: docker_compose_v1_version
+    #   changed_when: false
+    #   ignore_errors: yes
+    #   when: false # Disabled by default
+
+    # - name: Display Docker Compose V1 version (if V1 was installed)
+    #   debug:
+    #     var: docker_compose_v1_version.stdout
+    #   when: docker_compose_v1_version.stdout is defined and false # Disabled by default
+
+  handlers:
+    - name: Test Docker Compose
+      command: docker compose version # Note: 'docker compose' for V2, 'docker-compose' for V1
+      register: docker_compose_test
+      changed_when: false
+      failed_when: docker_compose_test.rc != 0
+      listen: "Test Docker Compose" 
