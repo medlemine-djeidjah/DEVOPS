@@ -1,0 +1,13 @@
+# Ansible variables for all hosts
+
+# Database credentials for MySQL
+db_name: "devops"
+db_user: "root"
+db_password: "root" # Please change this!
+db_root_password: "" # Please change this!
+
+# Application directory on the remote server
+remote_app_dir: "~/DEVOPS"
+
+# Variables for docker-compose template (image names are loaded from versions.yml in the playbook)
+# No need to redefine image_versions here if deploy.yml loads versions.yml 

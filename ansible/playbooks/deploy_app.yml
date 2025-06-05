@@ -1,95 +1,76 @@
 ---
 - name: Deploy Multi-App Stack
   hosts: app_servers
-  become: true # Most docker and file operations will need sudo
+  become: true
 
   vars:
-    # --- Deployment Configuration (Customize these!) ---
-    app_deploy_dir: "/opt/my_multi_app" # Directory on vm2 for docker-compose.yml and version tracking
-
-    # Docker Image Names (replace with your actual image names if using a registry)
-    frontend_image_repo: "yourdockerhubuser/dummy-frontend" # e.g., yourusername/frontendapp
-    backend_image_repo: "yourdockerhubuser/dummy-backend"   # e.g., yourusername/backendapp
-    database_image_repo: "postgres"                        # e.g., postgres or mysql
-
-    # Default tags (will be overridden by versions.yml)
-    default_frontend_tag: "latest"
-    default_backend_tag: "latest"
-    default_database_tag: "13-alpine"
-
-    # Database Credentials (Consider using Ansible Vault for these in production)
-    db_user: "app_user"
-    db_password: "app_strong_password"
-    db_name: "app_db"
-    # --- End of Customization ---
+    # app_deploy_dir is now remote_app_dir from group_vars/all.yml
+    # db_user, db_password, db_name are now from group_vars/all.yml
 
     # Path to the versions file in your local git checkout (where Jenkins runs Ansible)
     local_versions_file: "../../versions.yml" # Relative to this playbook
-    # Path for storing version files on the remote server
-    remote_current_versions_file: "{{ app_deploy_dir }}/versions.yml.current"
-    remote_previous_versions_file: "{{ app_deploy_dir }}/versions.yml.previous"
+    # Path for storing version files on the remote server (using remote_app_dir)
+    # remote_current_versions_file: "{{ remote_app_dir }}/versions.yml.current" # Handled by copy task
+    # remote_previous_versions_file: "{{ remote_app_dir }}/versions.yml.previous" # Handled by copy task
 
   tasks:
     - name: Ensure deployment directory exists on remote server
       file:
-        path: "{{ app_deploy_dir }}"
+        path: "{{ remote_app_dir }}" # Using var from group_vars
         state: directory
         mode: '0755'
 
     - name: Load application versions from local versions.yml
       include_vars:
         file: "{{ local_versions_file }}"
-        name: version_data # Loads into version_data.current_versions.frontend_tag etc.
+        name: loaded_versions # Loads into loaded_versions.image_versions.nginx etc.
 
-    - name: Set image tags from versions.yml or defaults
-      set_fact:
-        frontend_tag_to_deploy: "{{ version_data.current_versions.frontend_tag | default(default_frontend_tag) }}"
-        backend_tag_to_deploy: "{{ version_data.current_versions.backend_tag | default(default_backend_tag) }}"
-        database_tag_to_deploy: "{{ version_data.current_versions.database_tag | default(default_database_tag) }}"
+    # No need for set_fact for image tags if docker-compose.yml.j2 uses loaded_versions.image_versions directly
 
     - name: (Rollback Prep) Backup existing current version file on remote to previous
       copy:
         remote_src: yes
-        src: "{{ remote_current_versions_file }}"
-        dest: "{{ remote_previous_versions_file }}"
+        src: "{{ remote_app_dir }}/versions.yml.current"
+        dest: "{{ remote_app_dir }}/versions.yml.previous"
         force: yes # Overwrite previous backup
       ignore_errors: yes # It's okay if the current file doesn't exist on first run
 
     - name: (Rollback Prep) Copy local versions.yml to remote as current version file
       copy:
         src: "{{ local_versions_file }}"
-        dest: "{{ remote_current_versions_file }}"
+        dest: "{{ remote_app_dir }}/versions.yml.current"
         mode: '0644'
 
     - name: Display versions to be deployed
       debug:
         msg:
-          - "Frontend: {{ frontend_image_repo }}:{{ frontend_tag_to_deploy }}"
-          - "Backend: {{ backend_image_repo }}:{{ backend_tag_to_deploy }}"
-          - "Database: {{ database_image_repo }}:{{ database_tag_to_deploy }}"
+          - "Frontend (Nginx): {{ loaded_versions.image_versions.nginx }}"
+          - "Backend (Python): {{ loaded_versions.image_versions.python_backend }}"
+          - "Database (MySQL): {{ loaded_versions.image_versions.mysql }}"
 
     - name: Generate docker-compose.yml on remote server from template
       template:
         src: templates/docker-compose.yml.j2
-        dest: "{{ app_deploy_dir }}/docker-compose.yml"
+        dest: "{{ remote_app_dir }}/docker-compose.yml"
         mode: '0644'
       vars:
-        frontend_image_name: "{{ frontend_image_repo }}"
-        frontend_image_tag: "{{ frontend_tag_to_deploy }}"
-        backend_image_name: "{{ backend_image_repo }}"
-        backend_image_tag: "{{ backend_tag_to_deploy }}"
-        database_image_name: "{{ database_image_repo }}"
-        database_image_tag: "{{ database_tag_to_deploy }}"
+        # Pass the entire image_versions structure to the template
+        # The template docker-compose.yml.j2 accesses these as:
+        # image: "{{ image_versions.nginx }}"
+        # image: "{{ image_versions.python_backend }}"
+        # image: "{{ image_versions.mysql }}"
+        # db_user, db_password, db_name, db_root_password, remote_app_dir are automatically available from group_vars/all.yml
+        image_versions: "{{ loaded_versions.image_versions }}"
 
     - name: Pull latest images defined in docker-compose.yml
       community.docker.docker_compose_v2:
-        project_src: "{{ app_deploy_dir }}"
+        project_src: "{{ remote_app_dir }}"
         pull: missing
       # Note: Requires community.docker collection (ansible-galaxy collection install community.docker)
 
     - name: Run docker compose up -d
       community.docker.docker_compose_v2:
-        project_src: "{{ app_deploy_dir }}"
+        project_src: "{{ remote_app_dir }}"
         state: present # Ensures services are running, recreates if config changed
         remove_orphans: yes # Removes containers for services not defined in compose file
       register: compose_status

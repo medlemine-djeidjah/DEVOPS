@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   frontend:
-    image: "{{ frontend_image_name }}:{{ frontend_image_tag }}"
+    image: "{{ image_versions.nginx }}"
     container_name: frontend_app
     ports:
-      - "80:80" # Exposes frontend on port 80 of vm2
+      - "80:80" # Exposes frontend (nginx) on port 80 of vm2
     networks:
       - app_network
     restart: unless-stopped
@@ -15,12 +13,12 @@ services:
     #   dockerfile: Dockerfile
 
   backend:
-    image: "{{ backend_image_name }}:{{ backend_image_tag }}"
+    image: "{{ image_versions.python_backend }}"
     container_name: backend_app
     ports:
       - "5000:5000" # Exposes backend on port 5000 of vm2
     environment:
-      - DATABASE_URL=postgresql://db_user:db_password@database:5432/app_db
+      - DATABASE_URL=mysql://{{ db_user }}:{{ db_password }}@database:3306/{{ db_name }}
       # Add other environment variables as needed
     depends_on:
       - database
@@ -33,18 +31,19 @@ services:
     #   dockerfile: Dockerfile
 
   database:
-    image: "{{ database_image_name }}:{{ database_image_tag }}" # e.g., postgres:13-alpine
+    image: "{{ image_versions.mysql }}" # e.g., mysql:latest
     container_name: database_service
     environment:
-      POSTGRES_USER: "{{ db_user }}"
-      POSTGRES_PASSWORD: "{{ db_password }}"
-      POSTGRES_DB: "{{ db_name }}"
+      MYSQL_ROOT_PASSWORD: "{{ db_root_password | default('supersecretrootpassword') }}" # It's better to set this explicitly
+      MYSQL_DATABASE: "{{ db_name }}"
+      MYSQL_USER: "{{ db_user }}"
+      MYSQL_PASSWORD: "{{ db_password }}"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     networks:
       - app_network
     ports:
-      - "5432:5432" # Expose DB port only if needed externally from vm2, usually not for app internal comms
+      - "3306:3306" # Expose DB port only if needed externally from vm2
     restart: unless-stopped
 
 networks:
@@ -52,4 +51,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data: # Persists database data 
+  mysql_data: # Persists database data 
