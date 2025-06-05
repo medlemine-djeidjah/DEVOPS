@@ -75,7 +75,7 @@
     - name: Pull images for rollback
       community.docker.docker_compose_v2:
         project_src: "{{ app_deploy_dir }}"
-        pull: yes
+        pull: missing
 
     - name: Run docker compose up -d for rollback (redeploying with old versions)
       community.docker.docker_compose_v2:

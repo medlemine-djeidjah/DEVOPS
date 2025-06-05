@@ -84,7 +84,7 @@
     - name: Pull latest images defined in docker-compose.yml
       community.docker.docker_compose_v2:
         project_src: "{{ app_deploy_dir }}"
-        pull: yes
+        pull: missing
       # Note: Requires community.docker collection (ansible-galaxy collection install community.docker)
 
     - name: Run docker compose up -d
