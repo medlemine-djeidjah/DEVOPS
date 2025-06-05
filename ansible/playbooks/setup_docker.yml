@@ -3,13 +3,20 @@
   hosts: app_servers
   become: true
   tasks:
-    - name: Update apt cache
+    - name: Ensure python3-six is installed (for Ansible module compatibility)
+      apt:
+        name: python3-six
+        state: present
+        update_cache: yes # Update cache if installing this for the first time
+      # Run this early as facts gathering itself might depend on it indirectly
+
+    - name: Update apt cache (again, or ensure it's fresh)
       apt:
         update_cache: yes
         force_apt_get: yes
       changed_when: false # Avoids showing as changed if only cache was updated
 
-    - name: Install prerequisite packages
+    - name: Install prerequisite packages for Docker
       apt:
         name:
           - apt-transport-https
