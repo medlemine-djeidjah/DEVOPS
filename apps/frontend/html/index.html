@@ -15,6 +15,7 @@
 <body>
     <div class="container">
         <h1>Welcome to My Awesome Application!</h1>
+        <p><strong>Backend Version: <span id=\"backend-version\">loading...</span></strong></p>
         <p>This is a placeholder frontend. Below is some dummy data that would normally come from the backend:</p>
         <div id="data-container">
             <p><em>Loading data from backend... (This is a static example)</em></p>
@@ -26,5 +27,29 @@
         </div>
         <p><small>Frontend served by Nginx.</small></p>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/data') // Assumes Nginx proxies /api/data to the backend
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.version) {
+                        document.getElementById('backend-version').textContent = data.version;
+                    } else {
+                        document.getElementById('backend-version').textContent = 'N/A';
+                        console.error('Version data not found in backend response:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching backend version:', error);
+                    document.getElementById('backend-version').textContent = 'Error';
+                });
+        });
+    </script>
 </body>
 </html> 

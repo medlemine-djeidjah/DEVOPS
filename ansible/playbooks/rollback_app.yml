@@ -95,7 +95,7 @@
         project_src: "{{ remote_app_dir }}"
         state: present
         remove_orphans: yes
-        build: yes  # Force a build, which will use the restored backend source
+        build: always  # Force a build, which will use the restored backend source
         recreate: smart # Recreate services if their configuration or image changed
       register: compose_status
       when: loaded_versions is defined # Only run if we successfully loaded versions
