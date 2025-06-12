@@ -1,4 +1,4 @@
 image_versions:
   nginx: "nginx:latest"
   mysql: "mysql:latest"
-  python_backend: "backend_app:3.0" 
+  python_backend: "backend_app:3.0"
